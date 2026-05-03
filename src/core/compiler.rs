@@ -16,6 +16,11 @@ pub fn compile<'a>(
         parser::Expression::Joined(a, b) => {
             compile(a, definitions, regex_kind) + &compile(b, definitions, regex_kind)
         }
+        parser::Expression::Alternative(a, b) => format!(
+            "(?:{}|{})",
+            compile(a, definitions, regex_kind),
+            compile(b, definitions, regex_kind)
+        ),
     }
 }
 

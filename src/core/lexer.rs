@@ -19,6 +19,9 @@ pub enum Token<'a> {
 
     #[token("+")]
     Join,
+
+    #[token("/")]
+    Alt,
 }
 
 fn parse_literal<'a>(lex: &mut logos::Lexer<'a, Token<'a>>) -> Result<String, String> {
