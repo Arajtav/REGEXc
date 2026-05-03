@@ -1,4 +1,6 @@
-use std::path::Path;
+mod core;
+
+use std::{fs, path::Path};
 
 use clap::{Parser, ValueEnum};
 
@@ -19,7 +21,7 @@ struct Cli {
 
 #[derive(Debug, ValueEnum, Clone, Copy, PartialEq, Eq)]
 #[clap(rename_all = "snake_case")]
-enum RegexKind {
+pub enum RegexKind {
     PosixEre,
     Pcre,
     Ecmascript,
@@ -30,5 +32,14 @@ enum RegexKind {
 
 fn main() {
     let cli = Cli::parse();
-    dbg!(cli);
+
+    let input = fs::read_to_string(cli.input).unwrap();
+
+    let result = core::compile(&input, cli.kind);
+
+    if let Some(output) = cli.out {
+        fs::write(output, result).unwrap();
+    } else {
+        println!("{result}");
+    }
 }
