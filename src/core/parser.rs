@@ -5,6 +5,7 @@ use crate::core::lexer::Token;
 #[derive(Debug, Clone)]
 pub enum Expression {
     Literal(String),
+    Joined(Box<Expression>, Box<Expression>),
 }
 
 #[derive(Debug)]
@@ -19,9 +20,14 @@ pub fn parser<'a>()
         Token::Definition(name) => name,
     };
 
-    let expr = select! {
+    let literal = select! {
         Token::Literal(val) => Expression::Literal(val),
     };
+
+    let expr = literal.clone().foldl(
+        just(Token::Join).ignore_then(literal.clone()).repeated(),
+        |lhs, rhs| Expression::Joined(Box::new(lhs), Box::new(rhs)),
+    );
 
     let definition = ident
         .then_ignore(just(Token::Define))

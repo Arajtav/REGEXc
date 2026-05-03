@@ -16,6 +16,9 @@ pub enum Token<'a> {
 
     #[regex(r#""([^"\\]|\\.)*""#, parse_literal)]
     Literal(String),
+
+    #[token("+")]
+    Join,
 }
 
 fn parse_literal<'a>(lex: &mut logos::Lexer<'a, Token<'a>>) -> Result<String, String> {
