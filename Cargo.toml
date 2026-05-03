@@ -4,3 +4,4 @@ publish = false
 edition = "2024"
 
 [dependencies]
+clap = { version = "4.6.1", features = ["derive"] }
