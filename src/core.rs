@@ -16,7 +16,7 @@ pub fn compile(input: &str, kind: RegexKind) -> String {
     for token in Token::lexer(input) {
         let token = token.unwrap();
 
-        if tokens.last() == Some(&Token::Newline) && token == Token::Newline {
+        if tokens.last().is_none_or(|f| *f == Token::Newline) && token == Token::Newline {
             continue;
         }
 
