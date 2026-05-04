@@ -13,13 +13,17 @@ pub fn compile<'a>(
 
     match expression {
         parser::Expression::Literal(literal) => escape_whitespace(&regex::escape(literal)),
-        parser::Expression::Joined(a, b) => {
-            compile(a, definitions, regex_kind) + &compile(b, definitions, regex_kind)
-        }
-        parser::Expression::Alternative(a, b) => format!(
-            "(?:{}|{})",
-            compile(a, definitions, regex_kind),
-            compile(b, definitions, regex_kind)
+        parser::Expression::Joined(v) => v
+            .iter()
+            .map(|expr| compile(expr, definitions, regex_kind))
+            .collect::<Box<[String]>>()
+            .join(""),
+        parser::Expression::Alternative(v) => format!(
+            "(?:{})",
+            v.iter()
+                .map(|expr| compile(expr, definitions, regex_kind))
+                .collect::<Box<[String]>>()
+                .join("|")
         ),
     }
 }

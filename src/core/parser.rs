@@ -5,8 +5,8 @@ use crate::core::lexer::Token;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     Literal(String),
-    Joined(Box<Expression>, Box<Expression>),
-    Alternative(Box<Expression>, Box<Expression>),
+    Alternative(Vec<Self>),
+    Joined(Vec<Self>),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -21,25 +21,32 @@ pub fn parser<'a>()
         Token::Definition(name) => name,
     };
 
-    let literal = select! {
+    let atom = select! {
         Token::Literal(val) => Expression::Literal(val),
     };
 
-    let alt_expr = literal.clone().foldl(
-        just(Token::Alt)
-            .ignore_then(literal.clone())
-            .repeated(),
-        |lhs, rhs| Expression::Alternative(Box::new(lhs), Box::new(rhs)),
-    );
+    let alt = atom
+        .separated_by(just(Token::Alt))
+        .at_least(1)
+        .collect::<Vec<_>>()
+        .map(|sub| match sub.as_slice() {
+            [only] => only.clone(),
+            _ => Expression::Alternative(sub),
+        });
 
-    let expr = alt_expr.clone().foldl(
-        just(Token::Join).ignore_then(alt_expr.clone()).repeated(),
-        |lhs, rhs| Expression::Joined(Box::new(lhs), Box::new(rhs)),
-    );
+    let join = alt
+        .clone()
+        .separated_by(just(Token::Join))
+        .at_least(1)
+        .collect::<Vec<_>>()
+        .map(|sub| match sub.as_slice() {
+            [only] => only.clone(),
+            _ => Expression::Joined(sub),
+        });
 
     let definition = ident
         .then_ignore(just(Token::Define))
-        .then(expr)
+        .then(join)
         .then_ignore(just(Token::Newline))
         .map(|(name, value)| Definition { name, value });
 
@@ -73,13 +80,10 @@ mod tests {
 
         assert_eq!(
             *expr,
-            Expression::Joined(
-                Box::new(lit("a")),
-                Box::new(Expression::Alternative(
-                    Box::new(lit("b")),
-                    Box::new(lit("c"))
-                ))
-            )
+            Expression::Joined(vec![
+                lit("a"),
+                Expression::Alternative(vec![lit("b"), lit("c")])
+            ])
         );
 
         // b := 1 / 2 + 3
@@ -99,13 +103,10 @@ mod tests {
 
         assert_eq!(
             *expr,
-            Expression::Joined(
-                Box::new(Expression::Alternative(
-                    Box::new(lit("a")),
-                    Box::new(lit("b"))
-                )),
-                Box::new(lit("c"))
-            )
-        )
+            Expression::Joined(vec![
+                Expression::Alternative(vec![lit("a"), lit("b")]),
+                lit("c")
+            ])
+        );
     }
 }
