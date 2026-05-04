@@ -1,10 +1,11 @@
 use chumsky::prelude::*;
 
-use crate::core::lexer::Token;
+use crate::core::lexer::{Builtin, Ident, Token};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     Literal(String),
+    Builtin(Builtin),
     Alternative(Vec<Self>),
     Joined(Vec<Self>),
 }
@@ -18,11 +19,12 @@ pub struct Definition<'a> {
 pub fn parser<'a>()
 -> impl Parser<'a, &'a [Token<'a>], Vec<Definition<'a>>, extra::Err<Rich<'a, Token<'a>>>> {
     let ident = select! {
-        Token::Definition(name) => name,
+        Token::Ident(Ident::Definition(name)) => name,
     };
 
     let atom = select! {
         Token::Literal(val) => Expression::Literal(val),
+        Token::Ident(Ident::Builtin(b)) => Expression::Builtin(b),
     };
 
     let alt = atom
@@ -65,13 +67,13 @@ mod tests {
     fn join_lower_precedence_than_alt() {
         // a := "a" + "b" / "c"
         let tokens = vec![
-            Token::Definition("a"),
+            Token::Ident(Ident::Definition("a")),
             Token::Define,
-            Token::Literal(format!("\"a\"")),
+            Token::Literal("\"a\"".to_owned()),
             Token::Join,
-            Token::Literal(format!("\"b\"")),
+            Token::Literal("\"b\"".to_owned()),
             Token::Alt,
-            Token::Literal(format!("\"c\"")),
+            Token::Literal("\"c\"".to_owned()),
             Token::Newline,
         ];
 
@@ -88,13 +90,13 @@ mod tests {
 
         // b := 1 / 2 + 3
         let tokens = vec![
-            Token::Definition("a"),
+            Token::Ident(Ident::Definition("a")),
             Token::Define,
-            Token::Literal(format!("\"a\"")),
+            Token::Literal("\"a\"".to_owned()),
             Token::Alt,
-            Token::Literal(format!("\"b\"")),
+            Token::Literal("\"b\"".to_owned()),
             Token::Join,
-            Token::Literal(format!("\"c\"")),
+            Token::Literal("\"c\"".to_owned()),
             Token::Newline,
         ];
 

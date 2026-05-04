@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{RegexKind, core::parser};
+use crate::{
+    RegexKind,
+    core::{lexer::Builtin, parser},
+};
 
 pub fn compile<'a>(
     expression: &'a parser::Expression,
@@ -16,8 +19,7 @@ pub fn compile<'a>(
         parser::Expression::Joined(v) => v
             .iter()
             .map(|expr| compile(expr, definitions, regex_kind))
-            .collect::<Box<[String]>>()
-            .join(""),
+            .collect::<String>(),
         parser::Expression::Alternative(v) => format!(
             "(?:{})",
             v.iter()
@@ -25,6 +27,18 @@ pub fn compile<'a>(
                 .collect::<Box<[String]>>()
                 .join("|")
         ),
+        parser::Expression::Builtin(b) => match b {
+            Builtin::Digit => String::from("\\d"),
+            Builtin::WordChar => String::from("\\w"),
+            Builtin::WhiteSpace => String::from("\\s"),
+            Builtin::Tab => String::from("\\t"),
+            Builtin::CarriageReturn => String::from("\\r"),
+            Builtin::Linefeed => String::from("\\n"),
+            Builtin::VerticalTab => String::from("\\v"),
+            Builtin::FormFeed => String::from("\\f"),
+            Builtin::Nul => String::from("\\0"),
+            Builtin::Space => String::from(" "),
+        },
     }
 }
 
