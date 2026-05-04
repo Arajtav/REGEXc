@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::core::parser::{self, Expression};
 
-pub fn process(source: Vec<parser::Definition<'_>>) -> HashMap<&str, Expression> {
+pub fn process(source: Vec<parser::Definition<'_>>) -> HashMap<&str, Expression<'_>> {
     let mut definitions = HashMap::new();
 
     for definition in source {

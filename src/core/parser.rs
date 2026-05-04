@@ -3,9 +3,10 @@ use chumsky::prelude::*;
 use crate::core::lexer::{Builtin, Ident, Token};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Expression {
+pub enum Expression<'a> {
     Literal(String),
     Builtin(Builtin),
+    Ident(&'a str),
     Alternative(Vec<Self>),
     Joined(Vec<Self>),
 }
@@ -13,7 +14,7 @@ pub enum Expression {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Definition<'a> {
     pub name: &'a str,
-    pub value: Expression,
+    pub value: Expression<'a>,
 }
 
 pub fn parser<'a>()
@@ -25,6 +26,7 @@ pub fn parser<'a>()
     let atom = select! {
         Token::Literal(val) => Expression::Literal(val),
         Token::Ident(Ident::Builtin(b)) => Expression::Builtin(b),
+        Token::Ident(Ident::Definition(name)) => Expression::Ident(name),
     };
 
     let alt = atom
@@ -59,7 +61,7 @@ pub fn parser<'a>()
 mod tests {
     use super::*;
 
-    fn lit(literal: &str) -> Expression {
+    fn lit(literal: &str) -> Expression<'_> {
         Expression::Literal(format!("\"{literal}\""))
     }
 
