@@ -33,13 +33,27 @@ pub enum RegexKind {
 fn main() {
     let cli = Cli::parse();
 
-    let input = fs::read_to_string(cli.input).unwrap();
+    let input = match fs::read_to_string(cli.input) {
+        Ok(input) => input,
+        Err(err) => {
+            eprintln!("Failed to read the input file: {err}");
+            return;
+        }
+    };
 
-    let result = core::compile(&input, cli.kind);
+    let regex = match core::compile(&input, cli.kind) {
+        Ok(res) => res,
+        Err(err) => {
+            eprintln!("{err}");
+            return;
+        }
+    };
 
     if let Some(output) = cli.out {
-        fs::write(output, result).unwrap();
+        if let Err(err) = fs::write(output, regex) {
+            eprintln!("Failed to write to the output file: {err}");
+        }
     } else {
-        println!("{result}");
+        println!("{regex}");
     }
 }

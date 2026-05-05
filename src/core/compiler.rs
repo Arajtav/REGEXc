@@ -14,22 +14,22 @@ fn compile_expr_re2<'a>(
     definition: &mut HashMap<&'a str, LazyCompiled<'a>>,
     expr: Expression<'a>,
     in_stack: &mut HashSet<&'a str>,
-) -> String {
+) -> Result<String, String> {
     match expr {
         Expression::Ident(ident) => compile_re2(definition, ident, in_stack),
-        Expression::Literal(literal) => escape_whitespace(&regex::escape(&literal)),
+        Expression::Literal(literal) => Ok(escape_whitespace(&regex::escape(&literal))),
         Expression::Joined(v) => v
             .into_iter()
             .map(|e| compile_expr_re2(definition, e, in_stack))
             .collect(),
-        Expression::Alternative(v) => format!(
+        Expression::Alternative(v) => Ok(format!(
             "(?:{})",
             v.into_iter()
                 .map(|e| compile_expr_re2(definition, e, in_stack))
-                .collect::<Vec<_>>()
+                .collect::<Result<Vec<_>, _>>()?
                 .join("|")
-        ),
-        Expression::Builtin(b) => match b {
+        )),
+        Expression::Builtin(b) => Ok(match b {
             Builtin::Digit => String::from("\\d"),
             Builtin::WordChar => String::from("\\w"),
             Builtin::WhiteSpace => String::from("\\s"),
@@ -40,7 +40,7 @@ fn compile_expr_re2<'a>(
             Builtin::FormFeed => String::from("\\f"),
             Builtin::Nul => String::from("\\0"),
             Builtin::Space => String::from(" "),
-        },
+        }),
     }
 }
 
@@ -49,7 +49,7 @@ fn compile_re2<'a>(
     definition: &mut HashMap<&'a str, LazyCompiled<'a>>,
     name: &'a str,
     in_stack: &mut HashSet<&'a str>,
-) -> String {
+) -> Result<String, String> {
     assert!(
         in_stack.insert(name),
         "Recursive definition found at: {name:?}"
@@ -57,34 +57,34 @@ fn compile_re2<'a>(
 
     if let Some(LazyCompiled::Compiled(v)) = definition.get(name) {
         in_stack.remove(name);
-        return v.clone();
+        return Ok(v.clone());
     }
 
-    let expr = match definition
-        .get(name)
-        .unwrap_or_else(|| panic!("Unknown symbol: {name:?}"))
-    {
-        LazyCompiled::Raw(expr) => expr.clone(),
-        LazyCompiled::Compiled(v) => {
+    let expr = match definition.get(name) {
+        None => {
+            return Err(format!("Unknown symbol: {name}"));
+        }
+        Some(LazyCompiled::Raw(expr)) => expr.clone(),
+        Some(LazyCompiled::Compiled(v)) => {
             in_stack.remove(name);
-            return v.clone();
+            return Ok(v.clone());
         }
     };
 
-    let value = compile_expr_re2(definition, expr, in_stack);
+    let value = compile_expr_re2(definition, expr, in_stack)?;
 
     definition.insert(name, LazyCompiled::Compiled(value.clone()));
 
     in_stack.remove(name);
 
-    value
+    Ok(value)
 }
 
 pub fn compile<'a>(
     entry: &'a str,
     definitions: HashMap<&'a str, Expression<'a>>,
     regex_kind: RegexKind,
-) -> String {
+) -> Result<String, String> {
     if regex_kind != RegexKind::Re2 {
         todo!("only re2 is supported as of now")
     }
