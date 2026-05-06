@@ -11,6 +11,7 @@ pub enum ProcessedExpression {
     Builtin(Builtin),
     Alternative(Vec<Self>),
     Joined(Vec<Self>),
+    Optional(Box<Self>),
 }
 
 pub fn process(source: Vec<parser::Definition<'_>>) -> Result<ProcessedExpression, String> {
@@ -47,6 +48,9 @@ fn expand<'a>(
             let expr = defs.get(name).ok_or(format!("{name} is not defined"))?;
             expand(expr, defs, rec)
         }
+        Expression::Optional(o) => Ok(ProcessedExpression::Optional(Box::new(expand(
+            o, defs, rec,
+        )?))),
         Expression::Alternative(v) => {
             let mut vec = Vec::with_capacity(v.len());
             for expr in v {

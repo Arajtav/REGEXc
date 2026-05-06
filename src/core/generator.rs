@@ -3,14 +3,21 @@ use crate::{
     core::{lexer::Builtin, processor::ProcessedExpression},
 };
 
-fn compile_expr_re2(expr: ProcessedExpression) -> Result<String, String> {
+fn generate_re2(expr: ProcessedExpression) -> Result<String, String> {
     match expr {
+        ProcessedExpression::Optional(inner) => {
+            assert!(
+                !matches!(*inner, ProcessedExpression::Optional(_)),
+                "OPTIONAL should not be nested"
+            );
+            Ok(format!("(?:{})?", generate_re2(*inner)?))
+        }
         ProcessedExpression::Literal(literal) => Ok(escape_whitespace(&regex::escape(&literal))),
-        ProcessedExpression::Joined(v) => v.into_iter().map(compile_expr_re2).collect(),
+        ProcessedExpression::Joined(v) => v.into_iter().map(generate_re2).collect(),
         ProcessedExpression::Alternative(v) => Ok(format!(
             "(?:{})",
             v.into_iter()
-                .map(compile_expr_re2)
+                .map(generate_re2)
                 .collect::<Result<Vec<_>, _>>()?
                 .join("|")
         )),
@@ -29,12 +36,12 @@ fn compile_expr_re2(expr: ProcessedExpression) -> Result<String, String> {
     }
 }
 
-pub fn compile(expr: ProcessedExpression, regex_kind: RegexKind) -> Result<String, String> {
+pub fn generate(expr: ProcessedExpression, regex_kind: RegexKind) -> Result<String, String> {
     if regex_kind != RegexKind::Re2 {
         todo!("only re2 is supported as of now")
     }
 
-    compile_expr_re2(expr)
+    generate_re2(expr)
 }
 
 fn escape_whitespace(text: &str) -> String {

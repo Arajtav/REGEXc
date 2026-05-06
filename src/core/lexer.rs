@@ -21,6 +21,9 @@ pub enum Token<'a> {
     Join,
     #[token("/")]
     Alt,
+
+    #[token("OPTIONAL")]
+    Optional,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -8,6 +8,7 @@ pub enum Expression<'a> {
     Ident(&'a str),
     Alternative(Vec<Self>),
     Joined(Vec<Self>),
+    Optional(Box<Self>),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -28,7 +29,18 @@ fn parser<'a>()
         Token::Ident(Ident::Definition(name)) => Expression::Ident(name),
     };
 
-    let alt = atom
+    let atom_with_optional = just(Token::Optional)
+        .or_not()
+        .then(atom)
+        .map(|(opt, expr)| {
+            if opt.is_some() {
+                Expression::Optional(Box::new(expr))
+            } else {
+                expr
+            }
+        });
+
+    let alt = atom_with_optional
         .separated_by(just(Token::Alt))
         .at_least(1)
         .collect::<Vec<_>>()

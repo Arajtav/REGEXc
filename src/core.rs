@@ -3,7 +3,7 @@ use crate::{
     core::{lexer::lex, parser::parse, processor::process},
 };
 
-mod compiler;
+mod generator;
 mod lexer;
 mod parser;
 mod processor;
@@ -12,7 +12,7 @@ pub fn compile(input: &str, kind: RegexKind) -> Result<String, String> {
     let tokens = lex(input)?;
     let parsed = parse(&tokens)?;
     let processed = process(parsed)?;
-    compiler::compile(processed, kind)
+    generator::generate(processed, kind)
 }
 
 #[cfg(test)]
