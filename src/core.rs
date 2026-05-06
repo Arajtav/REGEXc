@@ -7,6 +7,7 @@ mod generator;
 mod lexer;
 mod parser;
 mod processor;
+mod optimizer;
 
 pub fn compile(input: &str, kind: RegexKind) -> Result<String, String> {
     let tokens = lex(input)?;

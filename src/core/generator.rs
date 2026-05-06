@@ -6,7 +6,7 @@ use crate::{
 fn generate_re2(expr: ProcessedExpression) -> Result<String, String> {
     match expr {
         ProcessedExpression::Optional(inner) => {
-            assert!(
+            debug_assert!(
                 !matches!(*inner, ProcessedExpression::Optional(_)),
                 "OPTIONAL should not be nested"
             );

@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::core::{
     lexer::Builtin,
+    optimizer,
     parser::{self, Expression},
 };
 
@@ -26,7 +27,11 @@ pub fn process(source: Vec<parser::Definition<'_>>) -> Result<ProcessedExpressio
 
     let root = definitions.get("EXPORT").ok_or("EXPORT is not defined")?;
 
-    expand(root, &definitions, &mut HashSet::new())
+    let expanded = expand(root, &definitions, &mut HashSet::new())?;
+
+    let out = optimizer::merge_nested(expanded);
+
+    Ok(out)
 }
 
 fn expand<'a>(
