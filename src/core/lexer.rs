@@ -82,16 +82,15 @@ pub fn lex(input: &str) -> Result<Vec<Token<'_>>, String> {
     let mut lexer = Token::lexer(input);
 
     while let Some(result) = lexer.next() {
-        match result {
-            Ok(tok) => tokens.push(tok),
-            Err(()) => {
-                let span = lexer.span();
-                let bad = &input[span.clone()];
+        if let Ok(tok) = result {
+            tokens.push(tok);
+        } else {
+            let span = lexer.span();
+            let bad = &input[span.clone()];
 
-                let (line, col) = byte_to_line_col(input, span.start);
+            let (line, col) = byte_to_line_col(input, span.start);
 
-                return Err(format!("unexpected {bad:?} at {line}:{col}"));
-            }
+            return Err(format!("unexpected {bad:?} at {line}:{col}"));
         }
     }
 
