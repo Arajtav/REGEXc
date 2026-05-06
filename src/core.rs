@@ -11,7 +11,8 @@ mod processor;
 pub fn compile(input: &str, kind: RegexKind) -> Result<String, String> {
     let tokens = lex(input)?;
     let parsed = parse(&tokens)?;
-    compiler::compile("EXPORT", process(parsed), kind)
+    let processed = process(parsed)?;
+    compiler::compile(processed, kind)
 }
 
 #[cfg(test)]
