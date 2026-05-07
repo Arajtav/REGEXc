@@ -70,10 +70,13 @@ fn parser<'a>()
     let definition = ident
         .then_ignore(just(Token::Define))
         .then(join)
-        .then_ignore(just(Token::Newline))
         .map(|(name, value)| Definition { name, value });
 
-    definition.repeated().collect()
+    definition
+        .separated_by(just(Token::Newline).repeated().at_least(1))
+        .allow_leading()
+        .allow_trailing()
+        .collect()
 }
 
 pub fn parse<'a>(tokens: &'a [Token<'a>]) -> Result<Vec<Definition<'a>>, String> {

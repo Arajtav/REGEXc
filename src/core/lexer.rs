@@ -100,10 +100,6 @@ pub fn lex(input: &str) -> Result<Vec<Token<'_>>, String> {
         }
     }
 
-    if tokens.last() != Some(&Token::Newline) {
-        tokens.push(Token::Newline);
-    }
-
     Ok(tokens)
 }
 
