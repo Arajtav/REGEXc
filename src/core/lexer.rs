@@ -24,6 +24,9 @@ pub enum Token<'a> {
 
     #[token("OPTIONAL")]
     Optional,
+
+    #[token("MULTIPLE")]
+    Multiple,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

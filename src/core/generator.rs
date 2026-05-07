@@ -1,27 +1,23 @@
 use crate::{
     RegexKind,
-    core::{lexer::Builtin, processor::ProcessedExpression},
+    core::{lexer::Builtin, processor::InlinedExpression},
 };
 
-fn generate_re2(expr: ProcessedExpression) -> Result<String, String> {
+fn generate_re2(expr: InlinedExpression) -> Result<String, String> {
     match expr {
-        ProcessedExpression::Optional(inner) => {
-            debug_assert!(
-                !matches!(*inner, ProcessedExpression::Optional(_)),
-                "OPTIONAL should not be nested"
-            );
-            Ok(format!("(?:{})?", generate_re2(*inner)?))
-        }
-        ProcessedExpression::Literal(literal) => Ok(escape_whitespace(&regex::escape(&literal))),
-        ProcessedExpression::Joined(v) => v.into_iter().map(generate_re2).collect(),
-        ProcessedExpression::Alternative(v) => Ok(format!(
+        InlinedExpression::Optional(inner) => Ok(format!("(?:{})?", generate_re2(*inner)?)),
+        InlinedExpression::Multiple(inner) => Ok(format!("(?:{})+", generate_re2(*inner)?)),
+        InlinedExpression::Some(inner) => Ok(format!("(?:{})*", generate_re2(*inner)?)),
+        InlinedExpression::Literal(literal) => Ok(escape_whitespace(&regex::escape(&literal))),
+        InlinedExpression::Joined(v) => v.into_iter().map(generate_re2).collect(),
+        InlinedExpression::Alternative(v) => Ok(format!(
             "(?:{})",
             v.into_iter()
                 .map(generate_re2)
                 .collect::<Result<Vec<_>, _>>()?
                 .join("|")
         )),
-        ProcessedExpression::Builtin(b) => Ok(match b {
+        InlinedExpression::Builtin(b) => Ok(match b {
             Builtin::Digit => String::from("\\d"),
             Builtin::WordChar => String::from("\\w"),
             Builtin::WhiteSpace => String::from("\\s"),
@@ -36,7 +32,7 @@ fn generate_re2(expr: ProcessedExpression) -> Result<String, String> {
     }
 }
 
-pub fn generate(expr: ProcessedExpression, regex_kind: RegexKind) -> Result<String, String> {
+pub fn generate(expr: InlinedExpression, regex_kind: RegexKind) -> Result<String, String> {
     if regex_kind != RegexKind::Re2 {
         todo!("only re2 is supported as of now")
     }

@@ -5,9 +5,9 @@ use crate::{
 
 mod generator;
 mod lexer;
+mod optimizer;
 mod parser;
 mod processor;
-mod optimizer;
 
 pub fn compile(input: &str, kind: RegexKind) -> Result<String, String> {
     let tokens = lex(input)?;
@@ -79,7 +79,12 @@ mod tests {
     re2_test!(mul_oneof, r#"EXPORT := MULTIPLE ONEOF "ab""#, r"[ab]+");
     re2_test!(mul_digit, r"EXPORT := MULTIPLE DIGIT", r"\d+");
     re2_test!(mul_join, r#"EXPORT := MULTIPLE "a" + "b""#, r"a+b");
-    re2_test!(opt_mul_literal, r#"EXPORT := OPTIONAL MULTIPLE "a""#, r"a*");
+    re2_test!(opt_mul_char, r#"EXPORT := OPTIONAL MULTIPLE "a""#, r"a*");
+    re2_test!(
+        opt_mul_literal,
+        r#"EXPORT := OPTIONAL MULTIPLE "ab""#,
+        r"(?:ab)*"
+    );
     re2_test!(
         opt_mul_oneof,
         r#"EXPORT := OPTIONAL MULTIPLE ONEOF "ab""#,
