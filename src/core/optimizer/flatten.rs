@@ -1,9 +1,9 @@
-use crate::core::{optimizer::optimize, processor::InlinedExpression};
+use crate::core::{optimizer::merge::merge, processor::InlinedExpression};
 
 pub fn flatten(expr: InlinedExpression) -> InlinedExpression {
     match expr {
         InlinedExpression::Optional(v) => {
-            let inner = optimize(*v);
+            let inner = flatten(*v);
 
             match inner {
                 InlinedExpression::Optional(i) => InlinedExpression::Optional(i),
@@ -15,7 +15,7 @@ pub fn flatten(expr: InlinedExpression) -> InlinedExpression {
         }
 
         InlinedExpression::Multiple(v) => {
-            let inner = optimize(*v);
+            let inner = flatten(*v);
 
             match inner {
                 InlinedExpression::Multiple(i) => InlinedExpression::Multiple(i),
@@ -27,7 +27,7 @@ pub fn flatten(expr: InlinedExpression) -> InlinedExpression {
         }
 
         InlinedExpression::Some(v) => {
-            let inner = optimize(*v);
+            let inner = flatten(*v);
 
             match inner {
                 InlinedExpression::Optional(i)
@@ -38,11 +38,16 @@ pub fn flatten(expr: InlinedExpression) -> InlinedExpression {
         }
 
         InlinedExpression::Alternative(v) => {
-            InlinedExpression::Alternative(v.into_iter().map(optimize).collect())
+            let merged = merge(v);
+            if merged.len() == 1 {
+                merged.into_iter().next().unwrap()
+            } else {
+                InlinedExpression::Alternative(merged)
+            }
         }
 
         InlinedExpression::Joined(v) => {
-            InlinedExpression::Joined(v.into_iter().map(optimize).collect())
+            InlinedExpression::Joined(v.into_iter().map(flatten).collect())
         }
 
         other => other,
@@ -54,7 +59,11 @@ mod tests {
     use super::*;
 
     fn lit() -> InlinedExpression {
-        InlinedExpression::Literal("x".to_string())
+        InlinedExpression::Literal("x".to_owned())
+    }
+
+    fn lit_d(str: &str) -> InlinedExpression {
+        InlinedExpression::Literal(str.to_owned())
     }
 
     fn opt(x: InlinedExpression) -> InlinedExpression {
@@ -104,15 +113,17 @@ mod tests {
 
     gen_test!(opt_mul_mul_opt, opt(mul(mul(opt(lit())))), some(lit()));
 
-    gen_test!(
-        alt_opt_mul,
-        alt(vec![opt(mul(lit()))]),
-        alt(vec![some(lit())])
-    );
+    gen_test!(alt_opt_mul, alt(vec![opt(mul(lit()))]), some(lit()));
 
     gen_test!(
         join_mul_opt,
         join(vec![mul(opt(lit()))]),
         join(vec![some(lit())])
+    );
+
+    gen_test!(
+        alt3,
+        alt(vec![alt(vec![lit_d("a"), lit_d("b")]), lit_d("c")]),
+        alt(vec![lit_d("a"), lit_d("b"), lit_d("c")])
     );
 }

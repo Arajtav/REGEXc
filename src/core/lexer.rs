@@ -43,6 +43,38 @@ pub enum Builtin {
     Nul,
 }
 
+impl Builtin {
+    pub fn contains(self, c: char) -> bool {
+        match self {
+            Builtin::Digit => c.is_ascii_digit(),
+            Builtin::WordChar => c.is_ascii_alphanumeric(),
+            Builtin::WhiteSpace => c.is_whitespace(),
+            Builtin::Space => c == ' ',
+            Builtin::Tab => c == '\t',
+            Builtin::CarriageReturn => c == '\r',
+            Builtin::Linefeed => c == '\n',
+            Builtin::VerticalTab => c == '\x0b',
+            Builtin::FormFeed => c == '\x0c',
+            Builtin::Nul => c == '\0',
+        }
+    }
+
+    pub fn contains_builtin(self, c: Builtin) -> bool {
+        (match self {
+            Builtin::WordChar => c == Builtin::Digit,
+            Builtin::WhiteSpace => {
+                c == Builtin::Space
+                    || c == Builtin::Tab
+                    || c == Builtin::CarriageReturn
+                    || c == Builtin::Linefeed
+                    || c == Builtin::VerticalTab
+                    || c == Builtin::FormFeed
+            }
+            _ => false,
+        }) || c == self
+    }
+}
+
 impl FromStr for Builtin {
     type Err = ();
 
