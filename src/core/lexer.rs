@@ -1,12 +1,14 @@
-use std::str::FromStr;
+use std::{path::Path, str::FromStr};
 
 use logos::Logos;
+
+use crate::diagnostic::Diagnostic;
 
 #[derive(Logos, Debug, Clone, PartialEq, Eq)]
 #[logos(skip r"[ \t]+")]
 #[logos(skip(r";[^\r\n]*", allow_greedy = true))]
 pub enum Token<'a> {
-    #[regex(r"\r\n|\n|\r")]
+    #[regex(r"[\r\n]+")]
     Newline,
 
     #[regex(r"\w+", |lex| classify_ident(lex.slice()))]
@@ -27,6 +29,12 @@ pub enum Token<'a> {
 
     #[token("MULTIPLE")]
     Multiple,
+
+    #[token("ONEOF")]
+    OneOf,
+
+    #[token("NOTHING")]
+    Nothing,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,7 +90,7 @@ fn parse_literal<'a>(lex: &mut logos::Lexer<'a, Token<'a>>) -> Option<String> {
     unescape::unescape(inner)
 }
 
-pub fn lex(input: &str) -> Result<Vec<Token<'_>>, String> {
+pub fn lex<'a>(path: &'a Path, input: &'a str) -> Result<Vec<Token<'a>>, Diagnostic<'a>> {
     let mut tokens = Vec::new();
 
     let mut lexer = Token::lexer(input);
@@ -92,33 +100,15 @@ pub fn lex(input: &str) -> Result<Vec<Token<'_>>, String> {
             tokens.push(tok);
         } else {
             let span = lexer.span();
-            let bad = &input[span.clone()];
 
-            let (line, col) = byte_to_line_col(input, span.start);
-
-            return Err(format!("unexpected {bad:?} at {line}:{col}"));
+            return Err(Diagnostic {
+                path,
+                source: input,
+                error: format!("Lexer error"),
+                span: Some(span.into()),
+            });
         }
     }
 
     Ok(tokens)
-}
-
-fn byte_to_line_col(input: &str, byte_idx: usize) -> (usize, usize) {
-    let mut line = 1;
-    let mut col = 1;
-
-    for (i, ch) in input.char_indices() {
-        if i >= byte_idx {
-            break;
-        }
-
-        if ch == '\n' {
-            line += 1;
-            col = 1;
-        } else {
-            col += 1;
-        }
-    }
-
-    (line, col)
 }

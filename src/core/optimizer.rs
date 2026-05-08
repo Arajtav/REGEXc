@@ -1,4 +1,4 @@
-use crate::core::{optimizer::flatten::flatten, processor::InlinedExpression};
+use crate::core::{optimizer::flatten::flatten, inliner::InlinedExpression};
 
 mod flatten;
 

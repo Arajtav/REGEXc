@@ -1,4 +1,5 @@
 mod core;
+mod diagnostic;
 
 use std::{fs, path::Path};
 

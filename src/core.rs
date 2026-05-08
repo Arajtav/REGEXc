@@ -1,19 +1,27 @@
+use std::path::Path;
+
 use crate::{
     RegexKind,
-    core::{lexer::lex, parser::parse, processor::process},
+    core::{inliner::inline, lexer::lex, optimizer::optimize, parser::parse},
+    diagnostic::Diagnostic,
 };
 
 mod generator;
+mod inliner;
 mod lexer;
 mod optimizer;
 mod parser;
-mod processor;
 
-pub fn compile(input: &str, kind: RegexKind) -> Result<String, String> {
-    let tokens = lex(input)?;
-    let parsed = parse(&tokens)?;
-    let processed = process(parsed)?;
-    generator::generate(processed, kind)
+pub fn compile<'a>(
+    path: &'a Path,
+    input: &'a str,
+    kind: RegexKind,
+) -> Result<String, Vec<Diagnostic<'a>>> {
+    let tokens = lex(path, input).map_err(|e| vec![e])?;
+    let parsed = parse(path, input, &tokens)?;
+    let inlined = inline(path, input, "EXPORT", parsed)?;
+    let optimized = optimize(inlined);
+    generator::generate(inlined, kind)
 }
 
 #[cfg(test)]

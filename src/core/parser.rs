@@ -1,4 +1,9 @@
-use crate::core::lexer::{Builtin, Ident, Token};
+use std::path::Path;
+
+use crate::{
+    core::lexer::{Builtin, Ident, Token},
+    diagnostic::{Diagnostic, Span},
+};
 use chumsky::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,10 +23,14 @@ pub struct Definition<'a> {
     pub value: Expression<'a>,
 }
 
-fn parser<'a>()
--> impl Parser<'a, &'a [Token<'a>], Vec<Definition<'a>>, extra::Err<Rich<'a, Token<'a>>>> {
+fn parser<'a>() -> impl Parser<
+    'a,
+    &'a [Spanned<Token<'a>>],
+    Vec<(Definition<'a>, Span)>,
+    extra::Err<Rich<'a, Token<'a>>>,
+> {
     let ident = select! {
-        Token::Ident(Ident::Definition(name)) => name,
+        (Token::Ident(Ident::Definition(name)), _) => name,
     };
 
     let atom = select! {
@@ -70,7 +79,11 @@ fn parser<'a>()
     let definition = ident
         .then_ignore(just(Token::Define))
         .then(join)
-        .map(|(name, value)| Definition { name, value });
+        .map(|(name, value)| Definition { name, value })
+        .map_with(|def, e| {
+            let span = e.span();
+            (def, span)
+        });
 
     definition
         .separated_by(just(Token::Newline).repeated().at_least(1))
@@ -79,11 +92,19 @@ fn parser<'a>()
         .collect()
 }
 
-pub fn parse<'a>(tokens: &'a [Token<'a>]) -> Result<Vec<Definition<'a>>, String> {
+pub fn parse<'a>(
+    path: &'a Path,
+    source: &'a str,
+    tokens: &'a [Token<'a>],
+) -> Result<Vec<(Definition<'a>, Span)>, Vec<Diagnostic<'a>>> {
     parser().parse(tokens).into_result().map_err(|err| {
-        err.iter()
-            .map(|err| format!("{err:?}"))
-            .collect::<Vec<String>>()
-            .join("\n")
+        err.into_iter()
+            .map(|err| Diagnostic {
+                path,
+                source,
+                error: format!("Parser error"),
+                span: Some(err.span().into_range().into()),
+            })
+            .collect()
     })
 }

@@ -1,6 +1,6 @@
 use crate::{
     RegexKind,
-    core::{lexer::Builtin, processor::InlinedExpression},
+    core::{lexer::Builtin, inliner::InlinedExpression},
 };
 
 fn generate_re2(expr: InlinedExpression) -> Result<String, String> {

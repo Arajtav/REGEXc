@@ -1,4 +1,4 @@
-use crate::core::{optimizer::optimize, processor::InlinedExpression};
+use crate::core::{optimizer::optimize, inliner::InlinedExpression};
 
 pub fn flatten(expr: InlinedExpression) -> InlinedExpression {
     match expr {

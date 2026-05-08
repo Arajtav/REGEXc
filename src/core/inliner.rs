@@ -1,9 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
-use crate::core::{
-    lexer::Builtin,
-    optimizer::optimize,
-    parser::{self, Expression},
+use crate::{
+    core::{
+        lexer::Builtin,
+        optimizer::optimize,
+        parser::{self, Expression},
+    },
+    diagnostic::Diagnostic,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -17,30 +23,51 @@ pub enum InlinedExpression {
     Some(Box<Self>),
 }
 
-pub fn process(source: Vec<parser::Definition<'_>>) -> Result<InlinedExpression, String> {
+pub fn inline<'a>(
+    path: &'a Path,
+    source: &'a str,
+    root: &'a str,
+    expressions: Vec<(parser::Definition<'a>, std::ops::Range<usize>)>,
+) -> Result<InlinedExpression, Vec<Diagnostic<'a>>> {
     let mut definitions = HashMap::new();
+    let mut diagnostics = Vec::new();
 
-    for definition in source {
-        if definitions.contains_key(definition.name) {
-            return Err(format!("duplicate definition: {}", definition.name));
+    for (expression, span) in expressions {
+        if definitions.contains_key(expression.name) {
+            diagnostics.push(Diagnostic {
+                path,
+                source,
+                error: format!("Redefinition of {}", expression.name),
+                span: Some(span.into()),
+            });
+        } else {
+            definitions.insert(expression.name, expression.value);
         }
-        definitions.insert(definition.name, definition.value);
     }
 
-    let root = definitions.get("EXPORT").ok_or("EXPORT is not defined")?;
+    if !diagnostics.is_empty() {
+        return Err(diagnostics);
+    }
 
-    let expanded = expand(root, &definitions, &mut HashSet::new())?;
+    let Some(root) = definitions.get(root) else {
+        return Err(vec![Diagnostic {
+            path,
+            source,
+            error: format!("{root} is not defined"),
+            span: None,
+        }]);
+    };
 
-    let out = optimize(expanded);
-
-    Ok(out)
+    expand(path, source, root, &definitions, &mut HashSet::new()).map_err(|e| vec![e])
 }
 
 fn expand<'a>(
+    path: &'a Path,
+    source: &'a str,
     expr: &parser::Expression<'a>,
     defs: &HashMap<&'a str, parser::Expression<'a>>,
     rec: &mut HashSet<&'a str>,
-) -> Result<InlinedExpression, String> {
+) -> Result<InlinedExpression, Diagnostic<'a>> {
     match expr {
         Expression::Literal(s) => Ok(InlinedExpression::Literal(s.to_owned())),
         Expression::Builtin(b) => Ok(InlinedExpression::Builtin(*b)),
