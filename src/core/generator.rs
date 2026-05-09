@@ -29,6 +29,8 @@ fn generate_re2(expr: InlinedExpression) -> Result<String, String> {
             Builtin::Nul => String::from("\\0"),
             Builtin::Space => String::from(" "),
         }),
+        InlinedExpression::Char(c) => Ok(String::from(c)),
+        InlinedExpression::Nothing => Ok(String::new()),
     }
 }
 
