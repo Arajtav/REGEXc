@@ -27,6 +27,9 @@ pub enum Token<'a> {
 
     #[token("MULTIPLE")]
     Multiple,
+
+    #[token("ONEOF")]
+    Oneof,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,6 +47,21 @@ pub enum Builtin {
 }
 
 impl Builtin {
+    pub fn generate(self) -> &'static str {
+        match self {
+            Builtin::Digit => "\\d",
+            Builtin::WordChar => "\\w",
+            Builtin::WhiteSpace => "\\s",
+            Builtin::Tab => "\\t",
+            Builtin::CarriageReturn => "\\r",
+            Builtin::Linefeed => "\\n",
+            Builtin::VerticalTab => "\\v",
+            Builtin::FormFeed => "\\f",
+            Builtin::Nul => "\\0",
+            Builtin::Space => " ",
+        }
+    }
+
     pub fn contains(self, c: char) -> bool {
         match self {
             Builtin::Digit => c.is_ascii_digit(),

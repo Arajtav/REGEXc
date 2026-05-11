@@ -10,9 +10,13 @@ mod processor;
 
 pub fn compile(input: &str, kind: RegexKind) -> Result<String, String> {
     let tokens = lex(input)?;
+    // dbg!(&tokens);
     let parsed = parse(&tokens)?;
+    // dbg!(&parsed);
     let processed = process(parsed)?;
+    // dbg!(&processed);
     let optimized = processed.optimize();
+    // dbg!(&optimized);
     generator::generate(optimized, kind)
 }
 
@@ -39,7 +43,7 @@ mod tests {
     re2_test!(alt_chars_hyphen, r#"EXPORT := "-" / "b"#, r"[-b]");
     re2_test!(
         alt_chars_hyphen_escape,
-        r#"EXPORT := "a" / "-" / "b"#,
+        r#"EXPORT := "a" / "-" / "b""#,
         r"[-ab]"
     );
     re2_test!(

@@ -338,6 +338,7 @@ dependencies = [
  "clap",
  "logos",
  "regex",
+ "regex-syntax 0.8.10",
  "unescape",
 ]
 

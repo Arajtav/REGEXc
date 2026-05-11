@@ -8,6 +8,7 @@ use crate::core::{
 #[derive(Debug, PartialEq, Eq)]
 pub enum InlinedExpression {
     Literal(String),
+    Oneof(Vec<char>),
     Char(char),
     Builtin(Builtin),
     Alternative(Vec<Self>),
@@ -63,6 +64,23 @@ pub fn alt_merge(input: Vec<InlinedExpression>) -> Vec<InlinedExpression> {
         output.push(new);
     }
 
+    alt_merge_oneof(output)
+}
+
+pub fn alt_merge_oneof(input: Vec<InlinedExpression>) -> Vec<InlinedExpression> {
+    let mut output = Vec::with_capacity(input.len());
+    let mut oneof = Vec::new();
+
+    for el in input {
+        match el {
+            InlinedExpression::Oneof(items) => oneof.extend(items),
+            InlinedExpression::Char(c) => oneof.push(c),
+            InlinedExpression::Builtin(builtin) => oneof.push(builtin.generate()),
+            _ => output.push(el),
+        }
+    }
+
+    output.push(InlinedExpression::Oneof(oneof));
     output
 }
 
@@ -219,6 +237,7 @@ fn expand<'a>(
 ) -> Result<InlinedExpression, String> {
     match expr {
         Expression::Literal(s) => Ok(InlinedExpression::Literal(s.to_owned())),
+        Expression::Oneof(o) => Ok(InlinedExpression::Oneof(o.chars().collect())),
         Expression::Builtin(b) => Ok(InlinedExpression::Builtin(*b)),
         Expression::Ident(name) => {
             if !rec.insert(name) {

@@ -4,6 +4,7 @@ use chumsky::prelude::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression<'a> {
     Literal(String),
+    Oneof(String),
     Builtin(Builtin),
     Ident(&'a str),
     Alternative(Vec<Self>),
@@ -24,11 +25,30 @@ fn parser<'a>()
         Token::Ident(Ident::Definition(name)) => name,
     };
 
+    let literal = select! {
+        Token::Literal(lit) => Expression::Literal(lit),
+    };
+
+    let literal_or_oneof = just(Token::Oneof)
+        .or_not()
+        .then(literal)
+        .map(|(opt, expr)| {
+            if opt.is_some() {
+                if let Expression::Literal(lit) = expr {
+                    Expression::Oneof(lit)
+                } else {
+                    unreachable!()
+                }
+            } else {
+                expr
+            }
+        });
+
     let atom = select! {
-        Token::Literal(val) => Expression::Literal(val),
         Token::Ident(Ident::Builtin(b)) => Expression::Builtin(b),
         Token::Ident(Ident::Definition(name)) => Expression::Ident(name),
-    };
+    }
+    .or(literal_or_oneof);
 
     let modified_atom = just(Token::Optional)
         .or_not()

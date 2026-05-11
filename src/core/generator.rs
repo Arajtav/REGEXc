@@ -1,10 +1,28 @@
-use crate::{
-    RegexKind,
-    core::{lexer::Builtin, processor::InlinedExpression},
-};
+use crate::{RegexKind, core::processor::InlinedExpression};
 
 fn generate_re2(expr: InlinedExpression) -> Result<String, String> {
     match expr {
+        InlinedExpression::Oneof(inner) => Ok({
+            let mut str = String::from("[");
+
+            for c in inner {
+                match c {
+                    '\n' => str.push_str(r"\n"),
+                    '\r' => str.push_str(r"\r"),
+                    '\t' => str.push_str(r"\t"),
+                    '\x0b' => str.push_str(r"\v"),
+                    '\x0c' => str.push_str(r"\f"),
+                    _ => {
+                        if regex_syntax::is_meta_character(c) {
+                            str.push('\\');
+                        }
+                        str.push(c)
+                    }
+                }
+            }
+
+            str + "]"
+        }),
         InlinedExpression::Optional(inner) => Ok(format!("(?:{})?", generate_re2(*inner)?)),
         InlinedExpression::Multiple(inner) => Ok(format!("(?:{})+", generate_re2(*inner)?)),
         InlinedExpression::Some(inner) => Ok(format!("(?:{})*", generate_re2(*inner)?)),
@@ -17,18 +35,7 @@ fn generate_re2(expr: InlinedExpression) -> Result<String, String> {
                 .collect::<Result<Vec<_>, _>>()?
                 .join("|")
         )),
-        InlinedExpression::Builtin(b) => Ok(match b {
-            Builtin::Digit => String::from("\\d"),
-            Builtin::WordChar => String::from("\\w"),
-            Builtin::WhiteSpace => String::from("\\s"),
-            Builtin::Tab => String::from("\\t"),
-            Builtin::CarriageReturn => String::from("\\r"),
-            Builtin::Linefeed => String::from("\\n"),
-            Builtin::VerticalTab => String::from("\\v"),
-            Builtin::FormFeed => String::from("\\f"),
-            Builtin::Nul => String::from("\\0"),
-            Builtin::Space => String::from(" "),
-        }),
+        InlinedExpression::Builtin(b) => Ok(b.generate().to_owned()),
         InlinedExpression::Char(c) => Ok(String::from(c)),
         InlinedExpression::Nothing => Ok(String::new()),
     }

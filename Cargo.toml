@@ -8,4 +8,5 @@ chumsky = "0.12.0"
 clap = { version = "4.6.1", features = ["derive"] }
 logos = "0.16.1"
 regex = { version = "1.12.3", default-features = false }
+regex-syntax = "0.8.10"
 unescape = "0.1.0"
