@@ -38,17 +38,23 @@ impl InlinedExpression {
                 (Cow::Owned(make_atom(inner, atom) + "*"), true)
             }
             InlinedExpression::Joined(v) => (
-                Cow::Owned(v.into_iter().map(|a| a.build_re2().0).collect()),
+                Cow::Owned(
+                    v.into_iter()
+                        .map(|e| {
+                            let (e, atom) = e.build_re2();
+                            make_atom(e, atom)
+                        })
+                        .collect(),
+                ),
                 false,
             ),
             InlinedExpression::Alternative(v) => (
-                Cow::Owned(format!(
-                    "(?:{})",
+                Cow::Owned(
                     v.into_iter()
                         .map(|a| a.build_re2().0)
                         .collect::<Vec<_>>()
-                        .join("|")
-                )),
+                        .join("|"),
+                ),
                 false,
             ),
             InlinedExpression::Builtin(b) => (
