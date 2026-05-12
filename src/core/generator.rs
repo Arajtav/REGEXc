@@ -21,7 +21,10 @@ impl InlinedExpression {
                 Cow::Owned(escape_whitespace(&regex::escape(&literal))),
                 false,
             ),
-            InlinedExpression::Char(c) => (Cow::Owned(String::from(c)), true),
+            InlinedExpression::Char(c) => (
+                Cow::Owned(escape_whitespace(&regex::escape(&String::from(c)))),
+                true,
+            ),
             InlinedExpression::Optional(inner) => {
                 let (inner, atom) = inner.build_re2();
                 (Cow::Owned(make_atom(inner, atom) + "?"), true)

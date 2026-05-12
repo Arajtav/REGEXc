@@ -33,13 +33,13 @@ mod tests {
     re2_test!(lit, r#"EXPORT := "abc""#, r"abc");
     re2_test!(lit_escape_newline, r#"EXPORT := "\n""#, r"\n");
     re2_test!(lit_escape_tab, r#"EXPORT := "    ""#, r"\t");
-    re2_test!(lit_escape_dot, r#"EXPORT := ".""#, r"\\.");
+    re2_test!(lit_escape_dot, r#"EXPORT := ".""#, r"\.");
     re2_test!(lit_join, r#"EXPORT := "a" + DIGIT"#, r"a\d");
     re2_test!(alt_chars_chain, r#"EXPORT := "a" / "b" / DIGIT"#, r"[ab\d]");
     re2_test!(alt_chars_hyphen, r#"EXPORT := "-" / "b"#, r"[-b]");
     re2_test!(
         alt_chars_hyphen_escape,
-        r#"EXPORT := "a" / "-" / "b"#,
+        r#"EXPORT := "a" / "-" / "b""#,
         r"[-ab]"
     );
     re2_test!(
