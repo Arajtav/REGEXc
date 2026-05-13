@@ -6,8 +6,15 @@ use crate::core::{
 };
 
 #[derive(Debug, PartialEq, Eq)]
+pub enum Single {
+    Builtin(Builtin),
+    Char(char),
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum InlinedExpression {
     Literal(String),
+    Oneof(Vec<Single>),
     Char(char),
     Builtin(Builtin),
     Alternative(Vec<Self>),
@@ -20,43 +27,67 @@ pub enum InlinedExpression {
 
 pub fn alt_merge(input: Vec<InlinedExpression>) -> Vec<InlinedExpression> {
     let mut output = Vec::with_capacity(input.len());
+    let mut cv = Vec::new();
 
     'outer: for new in input {
-        for item in &mut output {
-            if &new == item {
-                continue 'outer;
-            }
-
-            if let (InlinedExpression::Builtin(new), InlinedExpression::Builtin(existing)) =
-                (&new, &item)
-            {
-                if existing.contains_builtin(*new) {
-                    continue 'outer;
+        'less_outer: for new in match new {
+            InlinedExpression::Oneof(singles) => singles,
+            InlinedExpression::Char(c) => vec![Single::Char(c)],
+            InlinedExpression::Builtin(b) => vec![Single::Builtin(b)],
+            _ => {
+                for item in &mut output {
+                    if &new == item {
+                        continue 'outer;
+                    }
                 }
 
-                if new.contains_builtin(*existing) {
-                    *item = InlinedExpression::Builtin(*new);
-                    continue 'outer;
+                output.push(new);
+                continue 'outer;
+            }
+        } {
+            for item in &mut cv {
+                if &new == item {
+                    continue 'less_outer;
+                }
+
+                if let (Single::Builtin(new), Single::Builtin(existing)) = (&new, &item) {
+                    if existing.contains_builtin(*new) {
+                        continue 'less_outer;
+                    }
+
+                    if new.contains_builtin(*existing) {
+                        *item = Single::Builtin(*new);
+                        continue 'less_outer;
+                    }
+                }
+
+                if let (Single::Builtin(new), Single::Char(existing)) = (&new, &item)
+                    && new.contains(*existing)
+                {
+                    *item = Single::Builtin(*new);
+                    continue 'less_outer;
+                }
+
+                if let (Single::Char(new), Single::Builtin(existing)) = (&new, &item)
+                    && existing.contains(*new)
+                {
+                    continue 'less_outer;
                 }
             }
 
-            if let (InlinedExpression::Builtin(new), InlinedExpression::Char(existing)) =
-                (&new, &item)
-                && new.contains(*existing)
-            {
-                *item = InlinedExpression::Builtin(*new);
-                continue 'outer;
-            }
-
-            if let (InlinedExpression::Char(new), InlinedExpression::Builtin(existing)) =
-                (&new, &item)
-                && existing.contains(*new)
-            {
-                continue 'outer;
-            }
+            cv.push(new);
         }
+    }
 
-        output.push(new);
+    if !cv.is_empty() {
+        output.push(if cv.len() == 1 {
+            match cv.into_iter().next().unwrap() {
+                Single::Builtin(b) => InlinedExpression::Builtin(b),
+                Single::Char(c) => InlinedExpression::Char(c),
+            }
+        } else {
+            InlinedExpression::Oneof(cv)
+        });
     }
 
     output
@@ -188,6 +219,7 @@ impl InlinedExpression {
                     InlinedExpression::Joined(clean)
                 }
             }
+            // TODO: oneof is not optimized at all unless it is in alt
             _ => self,
         }
     }
@@ -215,6 +247,9 @@ fn expand<'a>(
 ) -> Result<InlinedExpression, String> {
     match expr {
         Expression::Literal(s) => Ok(InlinedExpression::Literal(s.to_owned())),
+        Expression::Oneof(s) => Ok(InlinedExpression::Oneof(
+            s.chars().map(Single::Char).collect(),
+        )),
         Expression::Builtin(b) => Ok(InlinedExpression::Builtin(*b)),
         Expression::Ident(name) => {
             if !rec.insert(name) {
@@ -254,8 +289,8 @@ mod tests {
         InlinedExpression::Char('x')
     }
 
-    fn lit_d(c: char) -> InlinedExpression {
-        InlinedExpression::Char(c)
+    fn lit_s(s: &str) -> InlinedExpression {
+        InlinedExpression::Literal(s.to_owned())
     }
 
     fn opt(x: InlinedExpression) -> InlinedExpression {
@@ -311,7 +346,7 @@ mod tests {
 
     gen_test!(
         alt3,
-        alt(vec![alt(vec![lit_d('a'), lit_d('b')]), lit_d('c')]),
-        alt(vec![lit_d('a'), lit_d('b'), lit_d('c')])
+        alt(vec![alt(vec![lit_s("aa"), lit_s("bb")]), lit_s("cc")]),
+        alt(vec![lit_s("aa"), lit_s("bb"), lit_s("cc")])
     );
 }

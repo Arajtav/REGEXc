@@ -1,9 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{
-    RegexKind,
-    core::{lexer::Builtin, processor::InlinedExpression},
-};
+use crate::{RegexKind, core::processor::InlinedExpression};
 
 fn make_atom(s: Cow<'static, str>, a: bool) -> String {
     if a {
@@ -57,19 +54,19 @@ impl InlinedExpression {
                 ),
                 false,
             ),
-            InlinedExpression::Builtin(b) => (
-                Cow::Borrowed(match b {
-                    Builtin::Digit => "\\d",
-                    Builtin::WordChar => "\\w",
-                    Builtin::WhiteSpace => "\\s",
-                    Builtin::Tab => "\\t",
-                    Builtin::CarriageReturn => "\\r",
-                    Builtin::Linefeed => "\\n",
-                    Builtin::VerticalTab => "\\v",
-                    Builtin::FormFeed => "\\f",
-                    Builtin::Nul => "\\0",
-                    Builtin::Space => " ",
-                }),
+            InlinedExpression::Builtin(b) => (Cow::Borrowed(b.build()), true),
+            InlinedExpression::Oneof(v) => (
+                Cow::Owned(format!(
+                    "[{}]",
+                    v.into_iter()
+                        .map(|e| match e {
+                            crate::core::processor::Single::Builtin(builtin) =>
+                                builtin.build().to_owned(),
+                            crate::core::processor::Single::Char(c) =>
+                                escape_whitespace(&regex::escape(&String::from(c))),
+                        })
+                        .collect::<String>()
+                )),
                 true,
             ),
         }

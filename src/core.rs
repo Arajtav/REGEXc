@@ -72,7 +72,7 @@ mod tests {
         def := "a" / "b" / "cd"
         EXPORT := OPTIONAL def
         "#,
-        r"(?:[ab]|cd)?"
+        r"(?:cd|[ab])?"
     );
 
     re2_test!(mul_literal, r#"EXPORT := MULTIPLE "a""#, r"a+");
