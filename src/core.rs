@@ -36,7 +36,7 @@ mod tests {
     re2_test!(lit_escape_dot, r#"EXPORT := ".""#, r"\.");
     re2_test!(lit_join, r#"EXPORT := "a" + DIGIT"#, r"a\d");
     re2_test!(alt_chars_chain, r#"EXPORT := "a" / "b" / DIGIT"#, r"[ab\d]");
-    re2_test!(alt_chars_hyphen, r#"EXPORT := "-" / "b"#, r"[-b]");
+    re2_test!(alt_chars_hyphen, r#"EXPORT := "-" / "b""#, r"[-b]");
     re2_test!(
         alt_chars_hyphen_escape,
         r#"EXPORT := "a" / "-" / "b""#,

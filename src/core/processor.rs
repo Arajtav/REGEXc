@@ -40,21 +40,17 @@ pub fn alt_merge(input: Vec<InlinedExpression>) -> Vec<InlinedExpression> {
                 }
             }
 
-            if let (InlinedExpression::Builtin(new), InlinedExpression::Literal(existing)) =
+            if let (InlinedExpression::Builtin(new), InlinedExpression::Char(existing)) =
                 (&new, &item)
-                && existing.len() == 1
-                && let Some(c) = existing.chars().next()
-                && new.contains(c)
+                && new.contains(*existing)
             {
                 *item = InlinedExpression::Builtin(*new);
                 continue 'outer;
             }
 
-            if let (InlinedExpression::Literal(new), InlinedExpression::Builtin(existing)) =
+            if let (InlinedExpression::Char(new), InlinedExpression::Builtin(existing)) =
                 (&new, &item)
-                && new.len() == 1
-                && let Some(c) = new.chars().next()
-                && existing.contains(c)
+                && existing.contains(*new)
             {
                 continue 'outer;
             }
