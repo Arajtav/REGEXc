@@ -1,6 +1,9 @@
 use std::borrow::Cow;
 
-use crate::{RegexKind, core::processor::InlinedExpression};
+use crate::{
+    RegexKind,
+    core::processor::{InlinedExpression, Single},
+};
 
 fn make_atom(s: Cow<'static, str>, a: bool) -> String {
     if a {
@@ -8,6 +11,13 @@ fn make_atom(s: Cow<'static, str>, a: bool) -> String {
     } else {
         format!("(?:{s})")
     }
+}
+
+fn oneof_reorder(mut input: Vec<Single>) -> Vec<Single> {
+    if let Some(i) = input.iter().position(|s| *s == Single::Char('-')) {
+        input.swap(0, i);
+    }
+    input
 }
 
 impl InlinedExpression {
@@ -58,12 +68,18 @@ impl InlinedExpression {
             InlinedExpression::Oneof(v) => (
                 Cow::Owned(format!(
                     "[{}]",
-                    v.into_iter()
-                        .map(|e| match e {
+                    oneof_reorder(v)
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, e)| match e {
                             crate::core::processor::Single::Builtin(builtin) =>
                                 builtin.build().to_owned(),
                             crate::core::processor::Single::Char(c) =>
-                                escape_whitespace(&regex::escape(&String::from(c))),
+                                if c == '-' && i == 0 {
+                                    String::from('-')
+                                } else {
+                                    escape_whitespace(&regex::escape(&String::from(c)))
+                                },
                         })
                         .collect::<String>()
                 )),
