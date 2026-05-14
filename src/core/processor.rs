@@ -25,59 +25,58 @@ pub enum InlinedExpression {
     Nothing,
 }
 
+pub fn oneof_merge(input: Vec<Single>) -> Vec<Single> {
+    let mut output = Vec::with_capacity(input.len());
+
+    'outer: for new in input {
+        for old in &mut output {
+            match (&new, &old) {
+                (Single::Builtin(new_b), Single::Builtin(old_b)) => {
+                    if old_b.contains_builtin(*new_b) {
+                        continue 'outer;
+                    } else if new_b.contains_builtin(*old_b) {
+                        *old = new;
+                        continue 'outer;
+                    }
+                }
+                (Single::Builtin(new_b), Single::Char(old_c)) if new_b.contains(*old_c) => {
+                    *old = new;
+                    continue 'outer;
+                }
+                (Single::Char(new), Single::Builtin(old)) if old.contains(*new) => {
+                    continue 'outer;
+                }
+                (Single::Char(new), Single::Char(old)) if old == new => {
+                    continue 'outer;
+                }
+                _ => {}
+            }
+        }
+
+        output.push(new);
+    }
+
+    output
+}
+
 pub fn alt_merge(input: Vec<InlinedExpression>) -> Vec<InlinedExpression> {
     let mut output = Vec::with_capacity(input.len());
     let mut cv = Vec::new();
 
-    'outer: for new in input {
-        'less_outer: for new in match new {
-            InlinedExpression::Oneof(singles) => singles,
-            InlinedExpression::Char(c) => vec![Single::Char(c)],
-            InlinedExpression::Builtin(b) => vec![Single::Builtin(b)],
+    for new in input {
+        match new {
+            InlinedExpression::Oneof(singles) => cv.extend(singles),
+            InlinedExpression::Char(c) => cv.push(Single::Char(c)),
+            InlinedExpression::Builtin(b) => cv.push(Single::Builtin(b)),
             _ => {
-                for item in &mut output {
-                    if &new == item {
-                        continue 'outer;
-                    }
-                }
-
-                output.push(new);
-                continue 'outer;
-            }
-        } {
-            for item in &mut cv {
-                if &new == item {
-                    continue 'less_outer;
-                }
-
-                if let (Single::Builtin(new), Single::Builtin(existing)) = (&new, &item) {
-                    if existing.contains_builtin(*new) {
-                        continue 'less_outer;
-                    }
-
-                    if new.contains_builtin(*existing) {
-                        *item = Single::Builtin(*new);
-                        continue 'less_outer;
-                    }
-                }
-
-                if let (Single::Builtin(new), Single::Char(existing)) = (&new, &item)
-                    && new.contains(*existing)
-                {
-                    *item = Single::Builtin(*new);
-                    continue 'less_outer;
-                }
-
-                if let (Single::Char(new), Single::Builtin(existing)) = (&new, &item)
-                    && existing.contains(*new)
-                {
-                    continue 'less_outer;
+                if !output.contains(&new) {
+                    output.push(new);
                 }
             }
-
-            cv.push(new);
         }
     }
+
+    let cv = oneof_merge(cv);
 
     if !cv.is_empty() {
         output.push(if cv.len() == 1 {
@@ -217,6 +216,17 @@ impl InlinedExpression {
                     clean.into_iter().next().unwrap()
                 } else {
                     InlinedExpression::Joined(clean)
+                }
+            }
+            InlinedExpression::Oneof(oneof) => {
+                let oneof = oneof_merge(oneof);
+                if oneof.len() == 1 {
+                    match oneof.into_iter().next().unwrap() {
+                        Single::Builtin(b) => InlinedExpression::Builtin(b),
+                        Single::Char(c) => InlinedExpression::Char(c),
+                    }
+                } else {
+                    InlinedExpression::Oneof(oneof)
                 }
             }
             // TODO: oneof is not optimized at all unless it is in alt
