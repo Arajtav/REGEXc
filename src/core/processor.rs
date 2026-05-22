@@ -181,14 +181,20 @@ impl InlinedExpression {
                     _ => InlinedExpression::Some(Box::new(inner)),
                 }
             }
-            // TODO: doesn't cover alt(x, opt(alt(y))) which should result in opt(alt(x, y))
             InlinedExpression::Alternative(alt) => {
                 let mut flat = Vec::with_capacity(alt.len());
                 for a in alt.into_iter().map(InlinedExpression::optimize) {
-                    if let InlinedExpression::Alternative(inner) = a {
-                        flat.extend(inner);
-                    } else {
-                        flat.push(a);
+                    match a {
+                        InlinedExpression::Alternative(inner) => flat.extend(inner),
+                        InlinedExpression::Optional(inner) => {
+                            if let InlinedExpression::Alternative(alt) = *inner {
+                                flat.extend(alt);
+                            } else {
+                                flat.push(*inner);
+                            }
+                            flat.push(InlinedExpression::Nothing);
+                        }
+                        _ => flat.push(a),
                     }
                 }
 
@@ -237,7 +243,6 @@ impl InlinedExpression {
                     InlinedExpression::Oneof(oneof)
                 }
             }
-            // TODO: oneof is not optimized at all unless it is in alt
             _ => self,
         }
     }
@@ -367,5 +372,32 @@ mod tests {
         alt3,
         alt(vec![alt(vec![lit_s("aa"), lit_s("bb")]), lit_s("cc")]),
         alt(vec![lit_s("aa"), lit_s("bb"), lit_s("cc")])
+    );
+
+    gen_test!(
+        alt_lit_opt_alt,
+        alt(vec![lit_s("ab"), opt(alt(vec![lit_s("cd")]))]),
+        opt(alt(vec![lit_s("ab"), lit_s("cd")]))
+    );
+
+    gen_test!(
+        alt_lit_alt_opt_lit,
+        alt(vec![lit_s("ab"), alt(vec![opt(lit_s("cd"))])]),
+        opt(alt(vec![lit_s("ab"), lit_s("cd")]))
+    );
+
+    // TODO: this would be great, however maybe it is just my stylistic choice. not implemented currently since it would cancel out with opt mul -> some impl.
+    // gen_test!(
+    //     alt_lit_some_lit,
+    //     alt(vec![lit_s("ab"), some(lit_s("cd"))]),
+    //     opt(alt(vec![lit_s("ab"), mul(lit_s("cd"))]))
+    // );
+
+    gen_test!(alt_opt_alt, alt(vec![opt(alt(vec![lit()]))]), opt(lit()));
+
+    gen_test!(
+        alt_opt_alt2,
+        alt(vec![opt(alt(vec![lit_s("ab"), lit_s("cd")]))]),
+        opt(alt(vec![lit_s("ab"), lit_s("cd")]))
     );
 }
