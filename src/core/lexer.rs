@@ -30,6 +30,9 @@ pub enum Token<'a> {
 
     #[token("ONEOF")]
     Oneof,
+
+    #[token("NOTHING")]
+    Nothing,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -94,7 +94,7 @@ mod tests {
     re2_test!(
         nothing_alt_chain,
         r#"EXPORT := "a" / "b" / NOTHING"#,
-        r"#[ab]?#"
+        r"[ab]?"
     );
     re2_test!(nothing_join, r#"EXPORT := "a" + NOTHING"#, r"a");
 }

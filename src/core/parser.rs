@@ -11,6 +11,7 @@ pub enum Expression<'a> {
     Joined(Vec<Self>),
     Optional(Box<Self>),
     Multiple(Box<Self>),
+    Nothing,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -43,6 +44,7 @@ fn parser<'a>()
     let atom = select! {
         Token::Ident(Ident::Builtin(b)) => Expression::Builtin(b),
         Token::Ident(Ident::Definition(name)) => Expression::Ident(name),
+        Token::Nothing => Expression::Nothing,
     }
     .or(literal_or_oneof);
 

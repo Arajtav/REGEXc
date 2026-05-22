@@ -59,15 +59,17 @@ pub fn oneof_merge(input: Vec<Single>) -> Vec<Single> {
     output
 }
 
-pub fn alt_merge(input: Vec<InlinedExpression>) -> Vec<InlinedExpression> {
+pub fn alt_merge(input: Vec<InlinedExpression>) -> (Vec<InlinedExpression>, bool) {
     let mut output = Vec::with_capacity(input.len());
     let mut cv = Vec::new();
+    let mut nothing = false;
 
     for new in input {
         match new {
             InlinedExpression::Oneof(singles) => cv.extend(singles),
             InlinedExpression::Char(c) => cv.push(Single::Char(c)),
             InlinedExpression::Builtin(b) => cv.push(Single::Builtin(b)),
+            InlinedExpression::Nothing => nothing = true,
             _ => {
                 if !output.contains(&new) {
                     output.push(new);
@@ -89,7 +91,7 @@ pub fn alt_merge(input: Vec<InlinedExpression>) -> Vec<InlinedExpression> {
         });
     }
 
-    output
+    (output, nothing)
 }
 
 pub fn join_merge(input: Vec<InlinedExpression>) -> Vec<InlinedExpression> {
@@ -190,12 +192,18 @@ impl InlinedExpression {
                     }
                 }
 
-                let clean = alt_merge(flat);
+                let (clean, nothing) = alt_merge(flat);
 
-                if clean.len() == 1 {
-                    clean.into_iter().next().unwrap()
-                } else {
-                    InlinedExpression::Alternative(clean)
+                match (clean.len(), nothing) {
+                    (0, true) => InlinedExpression::Nothing,
+                    (1, true) => {
+                        InlinedExpression::Optional(Box::new(clean.into_iter().next().unwrap()))
+                    }
+                    (_, true) => {
+                        InlinedExpression::Optional(Box::new(InlinedExpression::Alternative(clean)))
+                    }
+                    (1, false) => clean.into_iter().next().unwrap(),
+                    (_, false) => InlinedExpression::Alternative(clean),
                 }
             }
             InlinedExpression::Joined(join) => {
@@ -288,6 +296,7 @@ fn expand<'a>(
             }
             Ok(InlinedExpression::Joined(vec))
         }
+        Expression::Nothing => Ok(InlinedExpression::Nothing),
     }
 }
 
